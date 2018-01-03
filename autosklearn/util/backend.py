@@ -5,7 +5,7 @@ import time
 import random
 import lockfile
 import numpy as np
-import pickle
+import dill as pickle
 import shutil
 from autosklearn.util import logging_ as logging
 
