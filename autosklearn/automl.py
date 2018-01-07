@@ -752,6 +752,8 @@ class AutoML(BaseEstimator):
         sio.write('  Best validation score: %f\n' % best_score)
         num_runs = len(cv_results['status'])
         sio.write('  Number of target algorithm runs: %d\n' % num_runs)
+        num_unknown = sum([s == 'Unknown' for s in cv_results['status']])
+        sio.write('  Number of unknown target algorithm runs: %d\n' % num_unknown)
         num_success = sum([s == 'Success' for s in cv_results['status']])
         sio.write('  Number of successful target algorithm runs: %d\n' % num_success)
         num_crash = sum([s == 'Crash' for s in cv_results['status']])

@@ -5,9 +5,12 @@ import sklearn.metrics
 
 import autosklearn.regression
 
-
-def main():
+if __name__ == '__main__':
     X, y = sklearn.datasets.load_boston(return_X_y=True)
+    
+    # import numpy as np
+    # X[0,3] = np.nan
+
     feature_types = (['numerical'] * 3) + ['categorical'] + (['numerical'] * 9)
     X_train, X_test, y_train, y_test = \
         sklearn.model_selection.train_test_split(X, y, random_state=1)
@@ -22,7 +25,4 @@ def main():
     print(automl.show_models())
     predictions = automl.predict(X_test)
     print("R2 score:", sklearn.metrics.r2_score(y_test, predictions))
-
-
-if __name__ == '__main__':
-    main()
+    print(automl.sprint_statistics())
