@@ -19,6 +19,8 @@ import autosklearn.evaluation.test_evaluator
 import autosklearn.evaluation.util
 from autosklearn.constants import CLASSIFICATION_TASKS, MULTILABEL_CLASSIFICATION
 
+import numpy as np
+
 WORST_POSSIBLE_RESULT = 1.0
 
 
@@ -53,7 +55,7 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
                  memory_limit=None, disable_file_output=False,
                  **resampling_strategy_args):
 
-        if resampling_strategy == 'holdout':
+        if resampling_strategy in ('holdout', 'ordered_holdout'):
             eval_function = autosklearn.evaluation.train_evaluator.eval_holdout
         elif resampling_strategy == 'holdout-iterative-fit':
             eval_function = autosklearn.evaluation.train_evaluator.eval_iterative_holdout
@@ -265,6 +267,8 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
                                               'partial-cv-iterative-fit']:
                 cv = StratifiedKFold(n_splits=self.resampling_strategy_args['folds'],
                                      shuffle=True, random_state=1)
+            elif self.resampling_strategy in ['ordered_holdout']:
+                cv = OrderedSplit(test_size=test_size)
             else:
                 raise ValueError(self.resampling_strategy)
         else:
@@ -276,7 +280,27 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
                                               'partial-cv-iterative-fit']:
                 cv = KFold(n_splits=self.resampling_strategy_args['folds'],
                            shuffle=True, random_state=1)
+            elif self.resampling_strategy in ['ordered_holdout']:
+                cv = OrderedSplit(test_size=test_size)
             else:
                 raise ValueError(self.resampling_strategy)
         return cv
 
+
+class OrderedSplit:
+    """
+    Split the data into two parts for training and testing with no shuffling.
+    Train set is first part, test set is second part.
+    """
+    def __init__(self, test_size):
+        test_size = float(test_size)
+        assert 0. < test_size < 1.
+        self.test_size = test_size
+        self.n_splits = 1
+
+    def split(self, X, y):
+        assert X.shape[0] == y.shape[0]
+        nobs = X.shape[0]
+        ntrain = int(np.round(nobs * (1 - self.test_size)))
+        idx = np.arange(nobs)
+        return [(idx[:ntrain], idx[ntrain:])]

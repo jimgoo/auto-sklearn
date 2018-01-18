@@ -14,6 +14,9 @@ args = parser.parse_args()
 working_directory = args.working_directory
 task_type = args.task_type
 
+if not os.path.exists(working_directory):
+    os.makedirs(working_directory)
+
 if task_type == 'classification':
     tasks = classification_tasks
     command_file_name = os.path.join(working_directory, 'umd-cls.txt')

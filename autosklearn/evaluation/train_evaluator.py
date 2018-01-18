@@ -88,7 +88,6 @@ class TrainEvaluator(AbstractEvaluator):
             y = _get_y_array(self.Y_train, self.task_type)
             for i, (train_split, test_split) in enumerate(self.cv.split(
                     self.X_train, y)):
-
                 opt_pred, valid_pred, test_pred = self._partial_fit_and_predict(
                     i, train_indices=train_split, test_indices=test_split)
 

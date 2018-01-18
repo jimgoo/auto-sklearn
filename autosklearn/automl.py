@@ -228,7 +228,7 @@ class AutoML(BaseEstimator):
         self._fit(datamanager, metric)
 
     def _get_logger(self, name):
-        logger_name = 'AutoML(%d):%s' % (self._seed, name)
+        logger_name = 'AutoML-%d-%s' % (self._seed, name)
         setup_logger(os.path.join(self._backend.temporary_directory, '%s.log' % str(logger_name)))
         return get_logger(logger_name)
 
@@ -302,7 +302,8 @@ class AutoML(BaseEstimator):
                     raise ValueError("List member '%s' for argument "
                                      "'disable_evaluator_output' must be one "
                                      "of " + str(allowed_elements))
-        if self._resampling_strategy not in ['holdout', 'holdout-iterative-fit',
+        if self._resampling_strategy not in ['holdout', 'ordered_holdout',
+                                             'holdout-iterative-fit',
                                              'cv', 'partial-cv',
                                              'partial-cv-iterative-fit']:
             raise ValueError('Illegal resampling strategy: %s' %
@@ -335,6 +336,8 @@ class AutoML(BaseEstimator):
 
         # == Pickle the data manager to speed up loading
         data_manager_path = self._backend.save_datamanager(datamanager)
+
+        self._logger.info('Saved data_manager to: %s' % data_manager_path)
 
         time_for_load_data = self._stopwatch.wall_elapsed(self._dataset_name)
 
@@ -491,19 +494,18 @@ class AutoML(BaseEstimator):
                 # could alleviate the problem in algorithms that depend on
                 # the ordering of the data.
                 for i in range(10):
-                    try:
-                        with warnings.catch_warnings():
-                            warnings.showwarning = send_warnings_to_log
-                            model.fit(X.copy(), y.copy())
-                        break
-                    except ValueError as e:
-                        indices = list(range(X.shape[0]))
-                        random_state.shuffle(indices)
-                        X = X[indices]
-                        y = y[indices]
+                    with warnings.catch_warnings():
+                        warnings.showwarning = send_warnings_to_log
+                        model.fit(X.copy(), y.copy())
+                    break
+                    # except ValueError as e:
+                    #     indices = list(range(X.shape[0]))
+                    #     random_state.shuffle(indices)
+                    #     X = X[indices]
+                    #     y = y[indices]
 
-                        if i == 9:
-                            raise e
+                    #     if i == 9:
+                    #         raise e
 
         self._can_predict = True
         return self
@@ -529,7 +531,8 @@ class AutoML(BaseEstimator):
                 "Predict can only be called if 'keep_models==True'")
         if not self._can_predict and \
                 self._resampling_strategy not in  \
-                        ['holdout', 'holdout-iterative-fit']:
+                        ['holdout', 'ordered_holdout',
+                        'holdout-iterative-fit']:
             raise NotImplementedError(
                 'Predict is currently not implemented for resampling '
                 'strategy %s, please call refit().' % self._resampling_strategy)

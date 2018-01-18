@@ -78,8 +78,8 @@ class EnsembleBuilder(multiprocessing.Process):
         while used_time < self.limit or (self.max_iterations > 0 and
                                          self.max_iterations >= num_iteration):
             num_iteration += 1
-            self.logger.debug('Time left: %f', self.limit - used_time)
-            self.logger.debug('Time last ensemble building: %f', time_iter)
+            #self.logger.debug('Time left: %f', self.limit - used_time)
+            #self.logger.debug('Time last ensemble building: %f', time_iter)
 
             # Reload the ensemble targets every iteration, important, because cv may
             # update the ensemble targets in the cause of running auto-sklearn
@@ -142,7 +142,7 @@ class EnsembleBuilder(multiprocessing.Process):
 
             if len(dir_ensemble_model_files) <= current_num_models and \
                     old_dir_ensemble_list_mtimes == dir_ensemble_list_mtimes:
-                self.logger.debug('Nothing has changed since the last time')
+                #self.logger.debug('Nothing has changed since the last time')
                 time.sleep(2)
                 used_time = watch.wall_elapsed('ensemble_builder')
                 continue
