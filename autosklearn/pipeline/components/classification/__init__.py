@@ -94,7 +94,7 @@ class ClassifierChoice(AutoSklearnChoice):
             raise ValueError("No classifiers found")
 
         if default is None:
-            defaults = ['random_forest', 'liblinear_svc', 'sgd',
+            defaults = ['AMBClassification', 'random_forest', 'liblinear_svc', 'sgd',
                         'libsvm_svc'] + list(available_estimators.keys())
             for default_ in defaults:
                 if default_ in available_estimators:
@@ -107,7 +107,7 @@ class ClassifierChoice(AutoSklearnChoice):
 
         estimator = CategoricalHyperparameter('__choice__',
                                               list(available_estimators.keys()),
-                                              default=default)
+                                              default_value=default)
         cs.add_hyperparameter(estimator)
         for estimator_name in available_estimators.keys():
             estimator_configuration_space = available_estimators[estimator_name].\

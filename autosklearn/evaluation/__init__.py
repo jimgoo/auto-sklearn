@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-import copy
 import functools
 import logging
 import math
@@ -8,16 +7,14 @@ from queue import Empty
 import traceback
 
 import pynisher
-from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit, KFold, \
-    StratifiedKFold
-from smac.tae.execute_ta_run import StatusType, BudgetExhaustedException
+from smac.tae.execute_ta_run import StatusType, BudgetExhaustedException, \
+    TAEAbortException
 from smac.tae.execute_func import AbstractTAFunc
 from ConfigSpace import Configuration
 
 import autosklearn.evaluation.train_evaluator
 import autosklearn.evaluation.test_evaluator
 import autosklearn.evaluation.util
-from autosklearn.constants import CLASSIFICATION_TASKS, MULTILABEL_CLASSIFICATION
 
 import numpy as np
 
@@ -52,7 +49,7 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
                  logger, initial_num_run=1, stats=None, runhistory=None,
                  run_obj='quality', par_factor=1, all_scoring_functions=False,
                  output_y_hat_optimization=True, include=None, exclude=None,
-                 memory_limit=None, disable_file_output=False,
+                 memory_limit=None, disable_file_output=False, init_params=None,
                  **resampling_strategy_args):
 
         if resampling_strategy in ('holdout', 'ordered_holdout'):
@@ -96,6 +93,7 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
         self.include = include
         self.exclude = exclude
         self.disable_file_output = disable_file_output
+        self.init_params = init_params
         self.logger = logger
 
         if memory_limit is not None:
@@ -156,18 +154,19 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
             seed=12345,
             instance_specific=None):
 
-        D = self.backend.load_datamanager()
         queue = multiprocessing.Queue()
 
         if not (instance_specific is None or instance_specific == '0'):
             raise ValueError(instance_specific)
+        init_params = {'instance': instance}
+        if self.init_params is not None:
+            init_params.update(self.init_params)
 
         arguments = dict(logger=logging.getLogger("pynisher"),
                          wall_time_in_s=cutoff,
                          mem_in_mb=self.memory_limit)
         obj_kwargs = dict(queue=queue,
                           config=config,
-                          datamanager=D,
                           backend=self.backend,
                           metric=self.metric,
                           seed=self.autosklearn_seed,
@@ -177,11 +176,12 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
                           include=self.include,
                           exclude=self.exclude,
                           disable_file_output=self.disable_file_output,
-                          instance=instance)
+                          instance=instance,
+                          init_params=init_params)
 
         if self.resampling_strategy != 'test':
-            cv = self.get_splitter(D)
-            obj_kwargs['cv'] = cv
+            obj_kwargs['resampling_strategy'] = self.resampling_strategy
+            obj_kwargs['resampling_strategy_args'] = self.resampling_strategy_args
         #if instance is not None:
         #    obj_kwargs['instance'] = instance
 
@@ -215,6 +215,12 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
             additional_run_info = {'error': 'Memout (used more than %d MB).' %
                                             self.memory_limit}
 
+        elif obj.exit_status is TAEAbortException:
+            status = StatusType.ABORT
+            cost = WORST_POSSIBLE_RESULT
+            additional_run_info = {'error': 'Your configuration of '
+                                            'auto-sklearn does not work!'}
+
         else:
             try:
                 info = autosklearn.evaluation.util.get_last_result(queue)
@@ -236,71 +242,18 @@ class ExecuteTaFuncWithQueue(AbstractTAFunc):
                 status = StatusType.CRASHED
                 cost = WORST_POSSIBLE_RESULT
 
+        if not isinstance(additional_run_info, dict):
+            additional_run_info = {'message': additional_run_info}
+
+        if isinstance(config, int):
+            origin = 'DUMMY'
+        else:
+            origin = getattr(config, 'origin', 'UNKNOWN')
+        additional_run_info['configuration_origin'] = origin
+
         runtime = float(obj.wall_clock_time)
         self.num_run += 1
+
+        autosklearn.evaluation.util.empty_queue(queue)
+
         return status, cost, runtime, additional_run_info
-
-    def get_splitter(self, D):
-        y = D.data['Y_train'].ravel()
-        train_size = 0.67
-        if self.resampling_strategy_args:
-            train_size = self.resampling_strategy_args.get('train_size', train_size)
-        test_size = 1 - train_size
-        if D.info['task'] in CLASSIFICATION_TASKS and \
-                        D.info['task'] != MULTILABEL_CLASSIFICATION:
-
-            if self.resampling_strategy in ['holdout',
-                                            'holdout-iterative-fit']:
-                try:
-                    cv = StratifiedShuffleSplit(n_splits=1, train_size=train_size,
-                                                test_size=test_size, random_state=1)
-                    test_cv = copy.deepcopy(cv)
-                    next(test_cv.split(y, y))
-                except ValueError as e:
-                    if 'The least populated class in y has only' in e.args[0]:
-                        cv = ShuffleSplit(n_splits=1, train_size=train_size,
-                                          test_size=test_size, random_state=1)
-                    else:
-                        raise
-
-            elif self.resampling_strategy in ['cv', 'partial-cv',
-                                              'partial-cv-iterative-fit']:
-                cv = StratifiedKFold(n_splits=self.resampling_strategy_args['folds'],
-                                     shuffle=True, random_state=1)
-            elif self.resampling_strategy in ['ordered_holdout']:
-                cv = OrderedSplit(test_size=test_size)
-            else:
-                raise ValueError(self.resampling_strategy)
-        else:
-            if self.resampling_strategy in ['holdout',
-                                            'holdout-iterative-fit']:
-                cv = ShuffleSplit(n_splits=1, train_size=train_size,
-                                  test_size=test_size, random_state=1)
-            elif self.resampling_strategy in ['cv', 'partial-cv',
-                                              'partial-cv-iterative-fit']:
-                cv = KFold(n_splits=self.resampling_strategy_args['folds'],
-                           shuffle=True, random_state=1)
-            elif self.resampling_strategy in ['ordered_holdout']:
-                cv = OrderedSplit(test_size=test_size)
-            else:
-                raise ValueError(self.resampling_strategy)
-        return cv
-
-
-class OrderedSplit:
-    """
-    Split the data into two parts for training and testing with no shuffling.
-    Train set is first part, test set is second part.
-    """
-    def __init__(self, test_size):
-        test_size = float(test_size)
-        assert 0. < test_size < 1.
-        self.test_size = test_size
-        self.n_splits = 1
-
-    def split(self, X, y):
-        assert X.shape[0] == y.shape[0]
-        nobs = X.shape[0]
-        ntrain = int(np.round(nobs * (1 - self.test_size)))
-        idx = np.arange(nobs)
-        return [(idx[:ntrain], idx[ntrain:])]

@@ -82,7 +82,7 @@ class RegressorChoice(AutoSklearnChoice):
             raise ValueError("No regressors found")
 
         if default is None:
-            defaults = ['random_forest', 'support_vector_regression'] + \
+            defaults = ['AMBRegression', 'random_forest', 'support_vector_regression'] + \
                 list(available_estimators.keys())
             for default_ in defaults:
                 if default_ in available_estimators:
@@ -95,7 +95,7 @@ class RegressorChoice(AutoSklearnChoice):
 
         estimator = CategoricalHyperparameter('__choice__',
                                               list(available_estimators.keys()),
-                                              default=default)
+                                              default_value=default)
         cs.add_hyperparameter(estimator)
         for estimator_name in available_estimators.keys():
             estimator_configuration_space = available_estimators[estimator_name].\
