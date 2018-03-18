@@ -8,7 +8,7 @@ formatters:
 handlers:
   console:
     class: logging.StreamHandler
-    level: INFO
+    level: DEBUG
     formatter: simple
     stream: ext://sys.stdout
 
@@ -34,13 +34,13 @@ loggers:
     propagate: no
 
   smac.intensification.intensification.Intensifier:
-    level: INFO
+    level: DEBUG
     handlers: [file_handler, console]
 
   smac.optimizer.local_search.LocalSearch:
-    level: INFO
+    level: DEBUG
     handlers: [file_handler, console]
 
   smac.optimizer.smbo.SMBO:
-    level: INFO
+    level: DEBUG
     handlers: [file_handler, console]

@@ -23,12 +23,13 @@ class LDA(AutoSklearnClassificationAlgorithm):
         import sklearn.multiclass
 
         if self.shrinkage == "None" or self.shrinkage is None:
-            self.shrinkage = None
+            shrinkage = None
             solver = 'svd'
         elif self.shrinkage == "auto":
+            shrinkage = "auto"
             solver = 'lsqr'
         elif self.shrinkage == "manual":
-            self.shrinkage = float(self.shrinkage_factor)
+            shrinkage = float(self.shrinkage_factor)
             solver = 'lsqr'
         else:
             raise ValueError(self.shrinkage)
@@ -37,7 +38,7 @@ class LDA(AutoSklearnClassificationAlgorithm):
         self.tol = float(self.tol)
 
         estimator = sklearn.discriminant_analysis.LinearDiscriminantAnalysis(
-            n_components=self.n_components, shrinkage=self.shrinkage,
+            n_components=self.n_components, shrinkage=shrinkage,
             tol=self.tol, solver=solver)
 
         if len(Y.shape) == 2 and Y.shape[1] > 1:

@@ -20,6 +20,17 @@ class EnsembleSelection(AbstractEnsemble):
         self.mode = mode
 
     def fit(self, predictions, labels, identifiers):
+        # print('ensemble_selection.py' + '='*100)
+        # print('preds', len(predictions), predictions[0].shape, predictions[0][0])
+        # print('labls', labels.shape) #, np.unique(labels))
+        # print('identifiers', identifiers)
+        # print('ensemble_size', self.ensemble_size)
+        # print('task_type', self.task_type)
+        # print('metric', self.metric, type(self.metric))
+        # print('sorted_initialization', self.sorted_initialization)
+        # print('bagging', self.bagging)
+        # print('mode', self.mode)
+
         self.ensemble_size = int(self.ensemble_size)
         if self.ensemble_size < 1:
             raise ValueError('Ensemble size cannot be less than one!')
