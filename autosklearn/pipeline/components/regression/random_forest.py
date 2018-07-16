@@ -111,7 +111,7 @@ class RandomForest(AutoSklearnRegressionAlgorithm):
         cs = ConfigurationSpace()
         n_estimators = Constant("n_estimators", 100)
         criterion = CategoricalHyperparameter("criterion",
-                                              ['mse', 'friedman_mse', 'mae'])
+                                              ['mse', 'friedman_mse']) # mae is very slow, so removed here
         max_features = UniformFloatHyperparameter(
             "max_features", 0.1, 1.0, default_value=1.0)
         max_depth = UnParametrizedHyperparameter("max_depth", "None")
